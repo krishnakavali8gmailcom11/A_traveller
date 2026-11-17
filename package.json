@@ -1,0 +1,21 @@
+{
+  "name": "one-day-farmer-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hyderabad-first farm experience marketplace website MVP",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "zod": "^3.24.2"
+  }
+}

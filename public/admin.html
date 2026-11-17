@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One Day Farmer | Admin Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23244b35'/><text y='68' x='50' text-anchor='middle' font-size='55'>🌿</text></svg>">
+  <style>
+    :root {
+      --green: #244b35;
+      --green2: #386847;
+      --lime: #d9e7bd;
+      --cream: #f8f6ef;
+      --ink: #1f2b22;
+      --muted: #68756b;
+      --white: #fff;
+      --border: #e8e5d9;
+      --danger: #c0392b;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 18px; }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-left a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .header-left a:hover { color: var(--green); }
+    h1 { color: var(--green); font-size: 24px; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Buttons */
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font: 600 13px system-ui;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: .15s;
+    }
+    .btn-primary { background: var(--green); color: white; }
+    .btn-primary:hover { background: #183a27; }
+    .btn-secondary { background: var(--white); color: var(--green); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #f0efe9; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #a93226; }
+    .btn-danger-outline {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .btn-danger-outline:hover { background: var(--danger); color: white; }
+    .btn-muted { background: #778477; color: white; }
+    .btn-muted:hover { background: #5f6d5f; }
+
+    /* Panels */
+    .panel {
+      background: white;
+      padding: 22px;
+      border-radius: 16px;
+      margin: 0 0 18px;
+      box-shadow: 0 4px 18px #2233220b;
+    }
+
+    /* Login */
+    #login p { margin-bottom: 12px; }
+    .login-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .login-row input {
+      min-width: 280px;
+      flex: 1;
+    }
+    .muted { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    /* Stats bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 12px #2233220a;
+      border-left: 4px solid var(--green);
+    }
+    .stat-card.new { border-left-color: #3498db; }
+    .stat-card.contacted { border-left-color: #f39c12; }
+    .stat-card.qualified { border-left-color: #27ae60; }
+    .stat-card.closed { border-left-color: var(--green); }
+    .stat-card.spam { border-left-color: var(--danger); }
+    .stat-card.total { border-left-color: var(--green); }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--green);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: .5px;
+      margin-top: 4px;
+    }
+
+    /* Filters */
+    .filters-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .filters-bar input,
+    .filters-bar select {
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font: 13px system-ui;
+      background: white;
+      color: var(--ink);
+    }
+    .filters-bar input { min-width: 220px; flex: 1; max-width: 360px; }
+    .filters-bar select { min-width: 140px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #edf0e9;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    th {
+      color: #58705a;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: .5px;
+      position: sticky;
+      top: 0;
+      background: white;
+    }
+    tr:hover { background: #fafaf5; }
+
+    /* Status select */
+    .status-select {
+      min-width: 120px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: 13px system-ui;
+      background: white;
+      cursor: pointer;
+    }
+
+    /* Status badge */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .badge-booking { background: #e8f5e9; color: #2e7d32; }
+    .badge-city_waitlist { background: #e3f2fd; color: #1565c0; }
+    .badge-farmer { background: #fff3e0; color: #e65100; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 8px; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+      .filters-bar input { min-width: 100%; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .header-actions { width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .wrap { padding: 14px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Login panel -->
+    <div class="panel" id="login">
+      <p>Sign in using the admin token configured in the server environment.</p>
+      <div class="login-row">
+        <input id="token" type="password" placeholder="Admin token" onkeydown="if(event.key==='Enter')login()">
+        <button class="btn btn-primary" onclick="login()">Sign in</button>
+      </div>
+      <p class="muted">Token is stored in this browser tab session only.</p>
+    </div>
+
+    <!-- Dashboard (hidden until login) -->
+    <div id="app" hidden>
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <a href="/">← Website</a>
+          <h1>Enquiry Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="load()">🔄 Refresh</button>
+          <button class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
+          <button class="btn btn-muted" onclick="logout()">Sign out</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card total"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total</div></div>
+        <div class="stat-card new"><div class="stat-value" id="statNew">0</div><div class="stat-label">New</div></div>
+        <div class="stat-card contacted"><div class="stat-value" id="statContacted">0</div><div class="stat-label">Contacted</div></div>
+        <div class="stat-card qualified"><div class="stat-value" id="statQualified">0</div><div class="stat-label">Qualified</div></div>
+        <div class="stat-card closed"><div class="stat-value" id="statClosed">0</div><div class="stat-label">Closed</div></div>
+        <div class="stat-card spam"><div class="stat-value" id="statSpam">0</div><div class="stat-label">Spam</div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Search by name, phone, or email..." oninput="applyFilters()">
+        <select id="filterStatus" onchange="applyFilters()">
+          <option value="">All statuses</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="closed">Closed</option>
+          <option value="spam">Spam</option>
+        </select>
+        <select id="filterType" onchange="applyFilters()">
+          <option value="">All types</option>
+          <option value="booking">Booking</option>
+          <option value="city_waitlist">City waitlist</option>
+          <option value="farmer">Farmer</option>
+        </select>
+      </div>
+
+      <!-- Table -->
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Received</th>
+                <th>Type</th>
+                <th>Contact</th>
+                <th>City</th>
+                <th>Details</th>
+                <th>Status</th>
+                <th style="width:70px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state" style="display:none">
+          <div class="icon">🔍</div>
+          <p>No enquiries match your filters.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let token = sessionStorage.getItem('odf_admin_token') || '';
+let allLeads = [];
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+async function login() {
+  token = document.getElementById('token').value;
+  sessionStorage.setItem('odf_admin_token', token);
+  await load();
+}
+
+function logout() {
+  token = '';
+  allLeads = [];
+  sessionStorage.removeItem('odf_admin_token');
+  document.getElementById('app').hidden = true;
+  document.getElementById('login').hidden = false;
+}
+
+async function load() {
+  try {
+    const [leadsRes, statsRes] = await Promise.all([
+      fetch('/api/admin/leads', { headers: { Authorization: 'Bearer ' + token } }),
+      fetch('/api/admin/stats', { headers: { Authorization: 'Bearer ' + token } }),
+    ]);
+
+    if (!leadsRes.ok) throw Error('Sign-in failed. Check your admin token.');
+
+    allLeads = await leadsRes.json();
+    const stats = await statsRes.json();
+
+    document.getElementById('login').hidden = true;
+    document.getElementById('app').hidden = false;
+
+    // Update stats
+    document.getElementById('statTotal').textContent = stats.total || 0;
+    document.getElementById('statNew').textContent = stats.byStatus?.new || 0;
+    document.getElementById('statContacted').textContent = stats.byStatus?.contacted || 0;
+    document.getElementById('statQualified').textContent = stats.byStatus?.qualified || 0;
+    document.getElementById('statClosed').textContent = stats.byStatus?.closed || 0;
+    document.getElementById('statSpam').textContent = stats.byStatus?.spam || 0;
+
+    applyFilters();
+  } catch (e) {
+    alert(e.message);
+    document.getElementById('app').hidden = true;
+    document.getElementById('login').hidden = false;
+  }
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const statusFilter = document.getElementById('filterStatus').value;
+  const typeFilter = document.getElementById('filterType').value;
+
+  const filtered = allLeads.filter(x => {
+    if (statusFilter && x.status !== statusFilter) return false;
+    if (typeFilter && x.type !== typeFilter) return false;
+    if (search) {
+      const haystack = [x.name, x.phone, x.email].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  renderTable(filtered);
+}
+
+function renderTable(leads) {
+  const tbody = document.getElementById('rows');
+  const empty = document.getElementById('emptyState');
+
+  if (leads.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  tbody.innerHTML = leads.map(x => `
+    <tr>
+      <td>
+        ${new Date(x.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}<br>
+        <small style="color:var(--muted)">${new Date(x.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</small>
+      </td>
+      <td>
+        <span class="badge badge-${esc(x.type)}">${esc(x.type)}</span><br>
+        <strong>${esc(x.interest || '—')}</strong><br>
+        <small style="color:var(--muted)">${esc(x.reference)}</small>
+      </td>
+      <td>
+        <strong>${esc(x.name)}</strong><br>
+        ${esc(x.phone)}<br>
+        <small>${esc(x.email || '')}</small>
+      </td>
+      <td>${esc(x.city || '—')}</td>
+      <td>
+        ${esc(x.notes || '')}<br>
+        <small style="color:var(--muted)">Date: ${esc(x.preferred_date || '—')} · Guests: ${esc(x.guests || '—')}</small>
+      </td>
+      <td>
+        <select class="status-select" onchange="setStatus('${x.id}', this.value)">
+          ${['new', 'contacted', 'qualified', 'closed', 'spam'].map(s =>
+            `<option ${s === x.status ? 'selected' : ''}>${s}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td>
+        <button class="btn btn-danger-outline" onclick="deleteLead('${x.id}', '${esc(x.name)}')" title="Delete">🗑</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function setStatus(id, status) {
+  const r = await fetch('/api/admin/leads/' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ status }),
+  });
+  if (!r.ok) alert('Could not update status');
+  else {
+    // Update local data
+    const lead = allLeads.find(l => l.id === id);
+    if (lead) lead.status = status;
+  }
+}
+
+async function deleteLead(id, name) {
+  if (!confirm(`Delete the enquiry from "${name}"? This cannot be undone.`)) return;
+
+  const r = await fetch('/api/admin/leads/' + id, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + token },
+  });
+
+  if (!r.ok) {
+    alert('Could not delete enquiry.');
+    return;
+  }
+
+  allLeads = allLeads.filter(l => l.id !== id);
+  applyFilters();
+  // Reload stats
+  load();
+}
+
+function exportCSV() {
+  if (!allLeads.length) return alert('No leads to export.');
+
+  const headers = [
+    'Reference', 'Type', 'Interest', 'Name', 'Phone', 'Email',
+    'City', 'Preferred Date', 'Guests', 'Notes', 'Status', 'Created At'
+  ];
+
+  const csvField = v => {
+    const s = String(v ?? '');
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+
+  const rows = allLeads.map(x => [
+    x.reference, x.type, x.interest, x.name, x.phone, x.email,
+    x.city, x.preferred_date, x.guests, x.notes, x.status, x.created_at
+  ].map(csvField).join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `one-day-farmer-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+if (token) load();
+</script>
+</body>
+</html>
