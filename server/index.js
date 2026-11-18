@@ -8,6 +8,7 @@ const { z } = require('zod');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 // ── App & Config ──────────────────────────────────────────────
 const app = express();
@@ -39,6 +40,71 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at DESC);
 `);
+
+// ── Email Transporter & Notifications ─────────────────────────
+let mailTransporter = null;
+function getTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return null;
+
+  if (!mailTransporter) {
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = Number(process.env.SMTP_PORT || 465);
+    mailTransporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+  }
+  return mailTransporter;
+}
+
+async function sendLeadNotification(lead) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log(`[Email] SMTP not configured (set SMTP_USER and SMTP_PASS to enable instant email alerts).`);
+    return;
+  }
+
+  const recipient = process.env.NOTIFY_EMAIL || process.env.SMTP_USER;
+  const subject = `🌱 New Farm Enquiry [${lead.reference}]: ${lead.name} (${lead.city || 'No city'})`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e0e5db; border-radius: 12px; background: #fafaf7;">
+      <div style="background: #244b35; color: white; padding: 18px 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 20px;">🌿 New One Day Farmer Enquiry</h2>
+        <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Reference: <strong>${lead.reference}</strong></p>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr><td style="padding: 8px 0; color: #68756b; width: 140px;"><strong>Lead Type:</strong></td><td style="padding: 8px 0;">${lead.type}</td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Interest:</strong></td><td style="padding: 8px 0;"><strong>${lead.interest || 'General Enquiry'}</strong></td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Name:</strong></td><td style="padding: 8px 0;"><strong>${lead.name}</strong></td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Phone:</strong></td><td style="padding: 8px 0;"><a href="tel:${lead.phone}" style="color: #244b35; font-weight: bold;">${lead.phone}</a></td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Email:</strong></td><td style="padding: 8px 0;">${lead.email ? `<a href="mailto:${lead.email}">${lead.email}</a>` : '—'}</td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>City:</strong></td><td style="padding: 8px 0;">${lead.city || '—'}</td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Preferred Date:</strong></td><td style="padding: 8px 0;">${lead.date || 'Flexible'}</td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Guests:</strong></td><td style="padding: 8px 0;">${lead.guests || '—'}</td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b; vertical-align: top;"><strong>Notes:</strong></td><td style="padding: 8px 0; white-space: pre-wrap;">${lead.notes || 'No extra notes provided.'}</td></tr>
+        <tr><td style="padding: 8px 0; color: #68756b;"><strong>Received:</strong></td><td style="padding: 8px 0; font-size: 12px; color: #888;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</td></tr>
+      </table>
+
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e5db; font-size: 12px; color: #68756b; text-align: center;">
+        <p>View this lead anytime in your <a href="${process.env.APP_URL || 'http://localhost:3000'}/admin.html" style="color: #244b35; font-weight: bold;">Admin Dashboard</a>.</p>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"One Day Farmer" <${process.env.SMTP_USER}>`,
+    to: recipient,
+    subject,
+    html,
+  });
+  console.log(`[Email] Notification sent successfully to ${recipient} for ${lead.reference}`);
+}
 
 // ── Middleware ─────────────────────────────────────────────────
 app.disable('x-powered-by');
@@ -146,6 +212,22 @@ app.post('/api/leads', limiter, (req, res) => {
     created: now,
   });
 
+  // Send background email notification to owner (non-blocking)
+  sendLeadNotification({
+    reference,
+    type,
+    interest: v.interest,
+    name: v.name,
+    phone: v.phone,
+    email: v.email,
+    city: v.city,
+    date: v.date,
+    guests: v.guests,
+    notes: v.notes,
+  }).catch(err => {
+    console.error('[Email] Error sending lead notification:', err.message);
+  });
+
   res.status(201).json({ ok: true, reference });
 });
 
@@ -208,7 +290,6 @@ app.get('/api/admin/stats', admin, (_req, res) => {
 
 // ── 404 catch-all ─────────────────────────────────────────────
 app.use((req, res) => {
-  // Serve 404.html for page requests, JSON for API calls
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'Not found' });
   }
@@ -241,7 +322,6 @@ function shutdown(signal) {
     console.log('Database closed. Goodbye.');
     process.exit(0);
   });
-  // Force exit after 5 seconds
   setTimeout(() => process.exit(1), 5000);
 }
 
