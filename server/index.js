@@ -12,6 +12,8 @@ const nodemailer = require('nodemailer');
 
 // ── App & Config ──────────────────────────────────────────────
 const app = express();
+app.set('trust proxy', 1); // Trust reverse proxy headers (Render, Cloudflare, etc.)
+
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 
@@ -64,7 +66,7 @@ function getTransporter() {
 async function sendLeadNotification(lead) {
   const transporter = getTransporter();
   if (!transporter) {
-    console.log(`[Email] SMTP not configured (set SMTP_USER and SMTP_PASS to enable instant email alerts).`);
+    console.log(`[Email] SMTP not configured (set SMTP_USER and SMTP_PASS in Render Environment to enable email alerts).`);
     return;
   }
 
@@ -92,7 +94,7 @@ async function sendLeadNotification(lead) {
       </table>
 
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e5db; font-size: 12px; color: #68756b; text-align: center;">
-        <p>View this lead anytime in your <a href="${process.env.APP_URL || 'http://localhost:3000'}/admin.html" style="color: #244b35; font-weight: bold;">Admin Dashboard</a>.</p>
+        <p>View this lead anytime in your <a href="${process.env.APP_URL || 'https://a-traveller.onrender.com'}/admin.html" style="color: #244b35; font-weight: bold;">Admin Dashboard</a>.</p>
       </div>
     </div>
   `;
@@ -125,9 +127,10 @@ app.use((req, res, next) => {
 // Rate limiter for lead submissions
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 8,
+  limit: 25,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { error: 'Too many submissions. Please try again later.' },
 });
 
@@ -166,6 +169,47 @@ function admin(req, res, next) {
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'one-day-farmer' });
+});
+
+// Test email configuration endpoint
+app.get('/api/test-email', async (_req, res) => {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const recipient = process.env.NOTIFY_EMAIL || user;
+
+  if (!user || !pass) {
+    return res.status(400).json({
+      ok: false,
+      status: 'MISSING_CONFIGURATION',
+      message: 'SMTP_USER or SMTP_PASS is missing in Render Environment Variables.',
+      instructions: 'Go to Render Dashboard -> Environment -> Add SMTP_USER and SMTP_PASS.'
+    });
+  }
+
+  try {
+    const transporter = getTransporter();
+    await transporter.verify();
+    await transporter.sendMail({
+      from: `"One Day Farmer Test" <${user}>`,
+      to: recipient,
+      subject: '✅ One Day Farmer: Email Alerts Are Working!',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #d0d7de; border-radius: 8px;">
+          <h2 style="color: #244b35;">🌿 Email Alerts Configured Successfully!</h2>
+          <p>Your One Day Farmer website on Render is connected to Gmail.</p>
+          <p>Whenever a visitor books or enquires on your site, you will receive their details instantly here.</p>
+        </div>
+      `,
+    });
+    return res.json({ ok: true, message: `Success! Test email sent to ${recipient}` });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      status: 'AUTHENTICATION_FAILED',
+      error: err.message,
+      help: 'If using Gmail, SMTP_PASS must be a 16-letter Google App Password (not your normal Gmail password). Get one at https://myaccount.google.com/apppasswords'
+    });
+  }
 });
 
 // Submit a lead
